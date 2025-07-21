@@ -1,0 +1,66 @@
+services:
+  nats:
+    image: nats:latest
+    container_name: nats
+    ports:
+      - "4222:4222"
+
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: ecommerce
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  gateway-api:
+    build:
+      context: ./gateway-api
+      dockerfile: Dockerfile.dev
+    container_name: gateway-api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./gateway-api:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NATS_URL=nats://nats:4222
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_DB=ecommerce
+    depends_on:
+      - nats
+      - mysql
+    command: npm run start:dev
+
+  users-api:
+    build:
+      context: ./users-api
+      dockerfile: Dockerfile.dev
+    container_name: users-api
+    volumes:
+      - ./users-api:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NATS_URL=nats://nats:4222
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_DB=ecommerce
+    depends_on:
+      - nats
+      - mysql
+    command: npm run start:dev
+
+volumes:
+  mysql_data:
